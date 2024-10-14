@@ -1240,6 +1240,13 @@ function apbct_is_skip_request($ajax = false)
              apbct_is_in_uri('wc-api=2checkout_ipn_convert_plus') ) {
             return 'wc-payment-api';
         }
+        // WooCommerce PayZone payment feedback
+        if ( apbct_is_plugin_active('woocommerce/woocommerce.php') &&
+             Post::get('vads_version') &&
+             Post::get('vads_hash')
+        ) {
+            return 'WooCommerce PayZone payment feedback';
+        }
         // BuddyPress edit profile checking skip
         if ( apbct_is_plugin_active('buddypress/bp-loader.php') &&
              array_key_exists('profile-group-edit-submit', $_POST) ) {
