@@ -500,14 +500,19 @@ function apbct__filter_form_data($form_data)
     global $apbct;
 
     // modification to correctly check gravity forms attacks
-    if ( !empty($form_data['action']) && !empty($form_data['gform_ajax']) ) {
+    if ( ! empty($form_data['action']) &&
+         (
+             ! empty($form_data['gform_ajax']) ||
+             ! empty($form_data['gform_submit'])
+         )
+    ) {
         //this needs to unset exclusion rule
-        error_log('CTDEBUG: [' . __FUNCTION__ . '] [WE GOT THIS! POST]: ' . var_export($_POST,true));
+        error_log('CTDEBUG: [' . __FUNCTION__ . '] [WE GOT THIS! POST]: ' . var_export($_POST, true));
         $gfa_res = ct_gfa($form_data);
-        error_log('CTDEBUG: [' . __FUNCTION__ . '] [GFA RESULT OLD]: ' . var_export($gfa_res,true));
+        error_log('CTDEBUG: [' . __FUNCTION__ . '] [GFA RESULT OLD]: ' . var_export($gfa_res, true));
         unset($form_data['ct_checkjs']);
         $gfa_res = ct_gfa($form_data);
-        error_log('CTDEBUG: [' . __FUNCTION__ . '] [GFA RESULT NEW]: ' . var_export($gfa_res,true));
+        error_log('CTDEBUG: [' . __FUNCTION__ . '] [GFA RESULT NEW]: ' . var_export($gfa_res, true));
     }
 
     if (isset($form_data['data']) && is_array($form_data['data'])) {
