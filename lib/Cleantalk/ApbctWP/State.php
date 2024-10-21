@@ -71,7 +71,7 @@ class State extends \Cleantalk\Common\State
         'comments__remove_comments_links'          => 0, // Remove links from approved comments
         'comments__show_check_links'               => 1, // Shows check link to Cleantalk's DB.
         'comments__manage_comments_on_public_page' => 0, // Allows to control comments on public page.
-        'comments__the_real_person'                => 1, // Shows badge on each approved by cloud comments on public page.
+        'comments__the_real_person'                => 0, // Shows badge on each approved by cloud comments on public page.
         'comments__hide_website_field'             => 0, // Hide website field from comment form
 
         // Data processing
@@ -83,6 +83,7 @@ class State extends \Cleantalk\Common\State
         'data__bot_detector_enabled'               => 1,
         'data__pixel'                              => '3',
         'data__email_check_before_post'            => 1,
+        'data__email_check_exist_post'            => 0,
         'data__honeypot_field'                     => 1,
         'data__email_decoder'                      => 1,
         'data__email_decoder_buffer'               => 0,
@@ -301,7 +302,10 @@ class State extends \Cleantalk\Common\State
 
         // Insert api key (RC without token)
         'post_api_key'       => array('last_call' => 0,),
+        // Rest available check
         'rest_check'         => array('last_call' => 0,),
+        // WP nonce gathering
+        'get_fresh_wpnonce'         => array('last_call' => 0,),
     );
 
     /**

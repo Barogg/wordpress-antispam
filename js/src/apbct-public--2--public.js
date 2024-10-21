@@ -5,6 +5,7 @@ let ctMouseEventTimerFlag = true; // Reading interval flag
 let ctMouseData = [];
 let ctMouseDataCounter = 0;
 let ctCheckedEmails = {};
+let ctCheckedEmailsExist = {};
 let ctMouseReadInterval;
 let ctMouseWriteDataInterval;
 let tokenCheckerIntervalId;
@@ -162,6 +163,173 @@ function checkEmail(e) {
                 },
             );
         }
+    }
+}
+
+/**
+ * @param {mixed} e
+ */
+function checkEmailExist(e) {
+    let currentEmail = e.target.value;
+    if (! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail)) {
+        return;
+    }
+
+    if (currentEmail && !(currentEmail in ctCheckedEmailsExist)) {
+        viewCheckEmailExist(e, 'load');
+        // Using REST API handler
+        ctPublicFunctions.data__ajax_type = 'rest';
+        if ( ctPublicFunctions.data__ajax_type === 'rest' ) {
+            apbct_public_sendREST(
+                'check_email_exist_post',
+                {
+                    method: 'POST',
+                    data: {'email': currentEmail},
+                    callback: function(result) {
+                        getResultCheckEmailExist(e, result, currentEmail);
+                    },
+                },
+            );
+            // Using AJAX request and handler
+        } else if ( ctPublicFunctions.data__ajax_type === 'admin_ajax' ) {
+            apbct_public_sendAJAX(
+                {
+                    action: 'apbct_email_check_exist_post',
+                    email: currentEmail,
+                },
+                {
+                    callback: function(result) {
+                        getResultCheckEmailExist(e, result, currentEmail);
+                    },
+                },
+            );
+        }
+    } else if (currentEmail && ctCheckedEmailsExist) {
+        result = ctCheckedEmailsExist[currentEmail];
+        getResultCheckEmailExist(e, result, currentEmail);
+    } else {
+        viewCheckEmailExist(e, '', '');
+    }
+}
+
+/**
+ * @param {mixed} e
+ * @param {mixed} result
+ * @param {string} currentEmail
+ */
+function getResultCheckEmailExist(e, result, currentEmail) {
+    result = result.result;
+
+    if (result) {
+        ctCheckedEmailsExist[currentEmail] = {
+            'result': result,
+            'timestamp': Date.now() / 1000 |0,
+        };
+
+        if (result.result == 'EXISTS') {
+            viewCheckEmailExist(e, 'good_email', result.text_result);
+        } else {
+            viewCheckEmailExist(e, 'bad_email', result.text_result);
+        }
+
+        ctSetCookie('ct_checked_emails_exist', JSON.stringify(ctCheckedEmailsExist));
+    }
+}
+
+/**
+ * @param {mixed} e
+ * @param {string} state
+ * @param {string} textResult
+ */
+function viewCheckEmailExist(e, state, textResult) {
+    let parentElement = e.target.parentElement;
+    let inputEmail = parentElement.querySelector('[name*="email"]');
+
+    if (!inputEmail) {
+        return;
+    }
+
+    const envelopeWidth = 35;
+    let envelope;
+    let hint;
+
+    // envelope
+    if (document.getElementById('apbct-check_email_exist-block')) {
+        envelope = document.getElementById('apbct-check_email_exist-block');
+    } else {
+        envelope = document.createElement('div');
+        envelope.setAttribute('class', 'apbct-check_email_exist-block');
+        envelope.setAttribute('id', 'apbct-check_email_exist-block');
+        envelope.style.top = inputEmail.getBoundingClientRect().top + 'px';
+        envelope.style.left = inputEmail.getBoundingClientRect().right - envelopeWidth - 10 + 'px';
+        envelope.style.height = inputEmail.offsetHeight + 'px';
+        envelope.style.width = envelopeWidth + 'px';
+
+        window.addEventListener('scroll', function() {
+            envelope.style.top = inputEmail.getBoundingClientRect().top + 'px';
+        });
+
+        parentElement.after(envelope);
+    }
+
+    // hint
+    if (document.getElementById('apbct-check_email_exist-popup_description')) {
+        hint = document.getElementById('apbct-check_email_exist-popup_description');
+    } else {
+        hint = document.createElement('div');
+        hint.setAttribute('class', 'apbct-check_email_exist-popup_description');
+        hint.setAttribute('id', 'apbct-check_email_exist-popup_description');
+        hint.style.width = inputEmail.offsetWidth + 'px';
+        hint.style.left = inputEmail.getBoundingClientRect().left + 'px';
+
+        window.addEventListener('scroll', function() {
+            hint.style.top = envelope.getBoundingClientRect().top + 'px';
+        });
+
+        envelope.after(hint);
+    }
+
+    switch (state) {
+    case 'load':
+        envelope.classList.add('apbct-check_email_exist-load');
+        break;
+
+    case 'good_email':
+        envelope.classList.remove('apbct-check_email_exist-load');
+        envelope.classList.add('apbct-check_email_exist-good_email');
+
+        envelope.onmouseover = function() {
+            hint.textContent = textResult;
+            hint.style.display = 'block';
+            hint.style.top = inputEmail.getBoundingClientRect().top - hint.getBoundingClientRect().height + 'px';
+            hint.style.color = '#1C7129';
+        };
+
+        envelope.onmouseout = function() {
+            hint.style.display = 'none';
+        };
+
+        break;
+
+    case 'bad_email':
+        envelope.classList.remove('apbct-check_email_exist-load');
+        envelope.classList.add('apbct-check_email_exist-bad_email');
+
+        envelope.onmouseover = function() {
+            hint.textContent = textResult;
+            hint.style.display = 'block';
+            hint.style.top = inputEmail.getBoundingClientRect().top - hint.getBoundingClientRect().height + 'px';
+            hint.style.color = '#E01111';
+        };
+
+        envelope.onmouseout = function() {
+            hint.style.display = 'none';
+        };
+
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -605,6 +773,11 @@ function apbct_ready() {
         apbct('input[type = \'email\'], #email').on('blur', checkEmail);
     }
 
+    if ( +ctPublic.data__email_check_exist_post) {
+        initCookies.push(['ct_checked_emails_exist', '0']);
+        apbct('comment-form input[name = \'email\'], input#email').on('blur', checkEmailExist);
+    }
+
     if (apbctLocalStorage.isSet('ct_checkjs')) {
         initCookies.push(['ct_checkjs', apbctLocalStorage.get('ct_checkjs')]);
     } else {
@@ -644,6 +817,7 @@ function apbct_ready() {
             ctPublic.data__cookies_type === 'none'
         ) {
             ctAjaxSetupAddCleanTalkDataBeforeSendAjax();
+            ctAddWCMiddlewares();
         }
 
         for (let i = 0; i < document.forms.length; i++) {
@@ -745,6 +919,87 @@ function apbct_ready() {
 
     // Set important paramaters via ajax if problematic cache solutions found
     apbctAjaxSetImportantParametersOnCacheExist(ctPublic.advancedCacheExists || ctPublic.varnishCacheExists);
+
+    if (typeof apbctTrpBrokenIntervalId !== 'undefined') {
+        setTimeout(() => {
+            clearInterval(apbctTrpBrokenIntervalId);
+        }, 1000);
+    }
+}
+
+/**
+ * Check broken TRP every 100ms until the page is loaded
+ */
+const apbctTrpBrokenIntervalId = setInterval(apbctFixBrokenTRP, 100);
+
+/**
+ * Fix broken TRP - clean author names from html tags
+ */
+function apbctFixBrokenTRP() {
+    let author;
+    let comments;
+    let reviews;
+    let pattern = '<div class="apbct-real-user-author-name">';
+
+    if (document.documentElement.textContent.indexOf(pattern) > -1) {
+        author = document.documentElement.textContent.match(new RegExp(pattern + '(.*?)<\/div>'))[1];
+
+        comments = document.querySelectorAll('.comment-author');
+        for (let i = 0; i < comments.length; i++) {
+            comments[i].childNodes.forEach((node) => {
+                if (node.textContent.includes(pattern)) {
+                    node.textContent = author;
+                    apbctFixBrokenTRP();
+                }
+            });
+        }
+
+        reviews = document.querySelectorAll('.woocommerce-review__author');
+        for (let i = 0; i < reviews.length; i++) {
+            reviews[i].childNodes.forEach((node) => {
+                if (node.textContent.includes(pattern)) {
+                    node.textContent = author;
+                    apbctFixBrokenTRP();
+                }
+            });
+        }
+    }
+}
+
+/**
+ * Insert no_cookies_data to rest request
+ */
+function ctAddWCMiddlewares() {
+    const ctPinDataToRequest = (options, next) => {
+        if (typeof options !== 'object' || options === null ||
+            !options.hasOwnProperty('data') || !options.hasOwnProperty('path')
+        ) {
+            return next(options);
+        }
+
+        // add to cart
+        if (options.data.hasOwnProperty('requests') &&
+            options.data.requests.length > 0 &&
+            options.data.requests[0].hasOwnProperty('path') &&
+            options.data.requests[0].path === '/wc/store/v1/cart/add-item'
+        ) {
+            options.data.requests[0].data.ct_no_cookie_hidden_field = getNoCookieData();
+        }
+
+        // checkout
+        if (options.path === '/wc/store/v1/checkout') {
+            options.data.ct_no_cookie_hidden_field = getNoCookieData();
+        }
+
+        return next(options);
+    };
+
+    if (window.hasOwnProperty('wp') &&
+        window.wp.hasOwnProperty('apiFetch') &&
+        typeof window.wp.apiFetch.use === 'function'
+    ) {
+        window.wp.apiFetch.use(ctPinDataToRequest);
+    }
 }
 
 /**
@@ -1213,7 +1468,7 @@ function fillDecodedEmails(encodedEmailNodes, decodingResult) {
         });
         // quit case on cloud block
         if (currentResultData.is_allowed === false) {
-            break;
+            return;
         }
         // handler for mailto
         if (
@@ -1257,6 +1512,7 @@ function getJavascriptClientData(commonCookies = []) {
 
     resultDataJson.apbct_headless = !!ctGetCookie(ctPublicFunctions.cookiePrefix + 'apbct_headless');
     resultDataJson.ct_checked_emails = ctGetCookie(ctPublicFunctions.cookiePrefix + 'ct_checked_emails');
+    resultDataJson.ct_checked_emails_exist = ctGetCookie(ctPublicFunctions.cookiePrefix + 'ct_checked_emails_exist');
     resultDataJson.ct_checkjs = ctGetCookie(ctPublicFunctions.cookiePrefix + 'ct_checkjs');
     resultDataJson.ct_fkp_timestamp = ctGetCookie(ctPublicFunctions.cookiePrefix + 'ct_fkp_timestamp');
     resultDataJson.ct_pointer_data = ctGetCookie(ctPublicFunctions.cookiePrefix + 'ct_pointer_data');
@@ -1734,66 +1990,8 @@ const defaultSend = XMLHttpRequest.prototype.send;
 
 if (document.readyState !== 'loading') {
     checkFormsExistForCatching();
-    apbctRealUserBadge();
 } else {
     apbct_attach_event_handler(document, 'DOMContentLoaded', checkFormsExistForCatching);
-    apbct_attach_event_handler(document, 'DOMContentLoaded', apbctRealUserBadge);
-}
-
-/**
- * Handle real user badge
- */
-function apbctRealUserBadge() {
-    document.querySelectorAll('.apbct-real-user-badge').forEach((el) => {
-        el.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.currentTarget.querySelector('.apbct-real-user-popup').style.display = 'inline-flex';
-        });
-    });
-    document.querySelector('body').addEventListener('click', function(e) {
-        document.querySelectorAll('.apbct-real-user-popup').forEach((el) => {
-            el.style.display = 'none';
-        });
-    });
-}
-
-/**
- * Shows a popup The Real Person when hovering over the cursor
- * @param {string} id
- */
-// eslint-disable-next-line no-unused-vars,require-jsdoc
-function apbctRealUserBadgeViewPopup(id) {
-    document.querySelectorAll('.apbct-real-user-popup').forEach((el) => {
-        el.style.display = 'none';
-    });
-    let popup = document.getElementById(id);
-    if (popup != 'undefined') {
-        popup.style.display = 'inline-flex';
-    }
-}
-
-/**
- * Closes The Real Person popup when the cursor leaves the badge element area
- * @param {object} event
- */
-// @ToDo Replace js logic with css
-// eslint-disable-next-line no-unused-vars,require-jsdoc
-function apbctRealUserBadgeClosePopup(event) {
-    if (
-        event.relatedTarget.className &&
-        ((event.relatedTarget.className.search(/apbct/) < 0 &&
-        event.relatedTarget.className.search(/real-user/) < 0) ||
-        (event.relatedTarget.className.search(/wrapper/) > 0)) &&
-        window.innerWidth > 768
-
-    ) {
-        document.querySelectorAll('.apbct-real-user-popup').forEach((el) => {
-            setTimeout(() => {
-                el.style.display = 'none';
-            }, 1000);
-        });
-    }
 }
 
 /**
@@ -1924,7 +2122,7 @@ function apbctCheckAddToCartByGet() {
             let href = el.getAttribute('href');
             // 2) Add to href attribute additional parameter ct_bot_detector_event_token gathered from apbctLocalStorage
             let eventToken = apbctLocalStorage.get('bot_detector_event_token');
-            if ( eventToken !== null ) {
+            if ( eventToken ) {
                 if ( href.indexOf('?') === -1 ) {
                     href += '?';
                 } else {
