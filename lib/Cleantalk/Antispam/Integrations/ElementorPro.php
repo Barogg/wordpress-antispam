@@ -48,10 +48,40 @@ class ElementorPro extends IntegrationBase
         unset($message['referer_title']);
 
         $form_data = TT::toArray(Post::get('form_fields'));
-        if ( $form_data ) {
-            if ( ! $sender_email ) {
-                $sender_email = !empty($form_data['email']) ? $form_data['email'] : '';
-            }
+	if ( $form_data ) {
+		$potential_email = '';
+		$phone = '';
+		$message_text = '';
+    
+		// Checking all form fields and checking their contents
+		foreach ($form_data as $field_name => $field_value) {
+			// Checking email
+			if (filter_var($field_value, FILTER_VALIDATE_EMAIL)) {
+				$potential_email = $field_value;
+			}
+			// Checking phone
+			elseif (preg_match('/^\+?[0-9\s\-\(\)]{7,}$/', $field_value)) {
+				$phone = $field_value;
+			}
+			// The rest can be considered a message or text field.
+			else {
+				$message_text .= $field_value . ' ';
+			}
+		}
+
+		if ($potential_email) {
+			$sender_email = $potential_email;
+		} else {
+			$sender_email = '';
+		}
+
+		if ($phone) {
+			$message['phone'] = $phone;
+		}
+
+		if ($message_text) {
+			$message['text'] = trim($message_text);
+		}
             if ( ! $sender_nickname ) {
                 $sender_nickname = !empty($form_data['name']) ? $form_data['name'] : '';
                 if ( !$sender_nickname ) {
