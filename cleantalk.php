@@ -322,6 +322,13 @@ if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'wpmlsubscribe') {
     ct_ajax_hook();
 }
 
+add_action('apbct_skipped_request', function($args) {
+    if (isset($_POST['ct_checkjs'])) {
+        error_log('CTDEBUG: [' . __FUNCTION__ . '] [$_POST]: ' . var_export($_POST,true));
+        error_log('CTDEBUG: [' . __FUNCTION__ . '] [SKIPPED REQUEST - REASON $args]: ' . var_export($args,true));
+    }
+});
+
 // Iphorm
 if (
     Post::get('iphorm_ajax') !== '' &&
